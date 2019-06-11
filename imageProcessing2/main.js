@@ -28,7 +28,9 @@
 
 // List of effects to apply.
 var effectsToApply = [
-  "normal"
+  "unsharpen",
+  "emboss",
+  "gaussianBlur"
 ];
 
 function main () {
@@ -150,10 +152,6 @@ function initTexBuffer (gl, program, image) {
   const kernelWeightLocation = gl.getUniformLocation(program, 'u_kernelWeight');
 
   // Create texture
-  var originalImageTexture = createTexture(gl);
-  // Upload the image into the texture.
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-
   // create 2 additional textures
   var textures = [];
   var fbuffers = [];
@@ -168,14 +166,23 @@ function initTexBuffer (gl, program, image) {
     fbuffers.push(fbuffer);
     // attach the texture to the frame buffer
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+      // these attachments don't work
+      console.error('texture attachment to framebuffer failed!');
+    }
   }
   gl.uniform1f(flipYLocation, 1);
+  var originalImageTexture = createTexture(gl);
+  // Upload the image into the texture.
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  gl.bindTexture(gl.TEXTURE_2D, originalImageTexture);
   // set uniforms
   gl.uniform2f(textureSizeLocation, image.width, image.height);
   for (let j = 0; j < effectsToApply.length; j++) {
     // we want to use frame buffer j%%2
     setFramebuffer(gl, program, fbuffers[j % 2], image.width, image.height);
     drawWithKernel(gl, program, effectsToApply[j]);
+    gl.bindTexture(gl.TEXTURE_2D, textures[j % 2]);
   }
   // draw result to the canvas
   gl.uniform1f(flipYLocation, -1);
@@ -189,9 +196,10 @@ function setFramebuffer(gl, program, buffer, width, height) {
   gl.viewport(0, 0, width, height);
 }
 function drawWithKernel(gl, program, name) {
-  console.log(name)
   const kernelLocation = gl.getUniformLocation(program, 'u_kernel');
+  const kernelWeightLocation = gl.getUniformLocation(program, 'u_kernelWeight');
   gl.uniform1fv(kernelLocation, kernels[name]);
+  gl.uniform1f(kernelWeightLocation, computeKernelWeight(kernels[name]));
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 function createTexture(gl) {
