@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      canvas {
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  </html>
+  <body>
+    <canvas id="canvas"></canvas>
+    <script id="vertex-shader" type="notjs">
+      attribute vec2 a_position;
+      attribute vec2 a_texCoord;
+      
+      uniform vec2 u_resolution;
+      
+      varying vec2 v_texCoord;
+
+      void main() {
+        vec2 zeroToOne = a_position / u_resolution;
+        vec2 zeroToTwo = zeroToOne * 2.0;
+        vec2 clipSpace = zeroToTwo - 1.0;
+
+        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+
+        // pass the textCoord to the fragment shader
+        // the GPU will interpolate this value between points
+        v_texCoord = a_texCoord;
+      }
+    </script>
+    <script id="fragment-shader" type="notjs">
+      precision mediump float;
+
+      varying vec2 v_texCoord;
+
+      uniform sampler2D u_image0;
+      uniform sampler2D u_image1
+
+      uniform vec2 u_textureSize;
+      void main() {
+        gl_FragColor = texture2D(u_image0, v_texCoord) * texture2D(u_image1, v_texCoord);
+      }
+    </script>
+    <script src="./main.js"></script>
+    <!-- <script src="https://webglfundamentals.org/webgl/resources/webgl-utils.js"></script> -->
+    <!-- <script src="./solution.js"></script> -->
+  </body>
+</html>
